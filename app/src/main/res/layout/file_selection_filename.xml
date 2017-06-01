@@ -58,4 +58,13 @@
   	  android:layout_below="@id/file_filename"
   	  android:layout_toRightOf="@id/open"
   	  android:width="100sp"/>
+
+	<Button
+		android:id="@+id/btnSmartCard"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="Smartcard"
+		android:layout_alignBaseline="@+id/create"
+		android:layout_alignBottom="@+id/create"
+		android:layout_toRightOf="@+id/create" />
 </RelativeLayout>

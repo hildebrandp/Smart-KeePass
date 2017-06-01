@@ -23,4 +23,6 @@
 	<color name="icon_background">#555555</color>
 	<color name="icon_text">#000000</color>
 	<color name="group_header_background">#888888</color>
+	<color name="txt_no_connection">#ff3030</color>
+	<color name="txt_connection">#00ff7f</color>
 </resources>    

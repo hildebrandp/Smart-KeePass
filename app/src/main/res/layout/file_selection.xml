@@ -20,16 +20,13 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
   android:layout_width="fill_parent"
   android:layout_height="fill_parent">
-  	<TextView android:id="@+id/file_listtop" 
+
+	<com.keepassdroid.view.FileNameView android:id="@+id/file_select"
   	  android:layout_width="fill_parent"
   	  android:layout_height="wrap_content"
-	  style="?android:attr/listSeparatorTextViewStyle"
-  	  android:text="@string/open_recent"/>
-  	<com.keepassdroid.view.FileNameView android:id="@+id/file_select"
-  	  android:layout_width="fill_parent"
-  	  android:layout_height="wrap_content"
-  	  android:layout_alignParentBottom="true"
-  	/>
+		android:layout_alignParentLeft="true" >
+
+	</com.keepassdroid.view.FileNameView>
   	<!--
   	<Button android:id="@+id/open"
   	  android:text="@string/menu_open"
@@ -65,9 +62,19 @@
 	  style="?android:attr/listSeparatorTextViewStyle"
 	  android:text="@string/enter_filename"/>
 	-->
-  	<ListView android:id="@+id/file_list"
+	<TextView
+		android:id="@+id/file_listtop"
+		style="?android:attr/listSeparatorTextViewStyle"
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content"
+		android:text="@string/open_recent"
+		android:layout_below="@+id/file_select"
+		android:layout_alignParentLeft="true" />
+
+	<ListView android:id="@+id/file_list"
       android:layout_width="fill_parent"
-      android:layout_height="fill_parent"
-      android:layout_below="@id/file_listtop"
-      android:layout_above="@id/file_select"/>
+      android:layout_height="50dp"
+		android:layout_alignParentBottom="true"
+		android:layout_alignParentLeft="true"
+		android:layout_below="@+id/file_listtop" />
 </RelativeLayout>

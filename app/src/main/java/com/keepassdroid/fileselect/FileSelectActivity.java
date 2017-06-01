@@ -46,7 +46,6 @@ import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import com.android.keepass.R;
 import com.keepassdroid.AboutDialog;
 import com.keepassdroid.GroupActivity;
@@ -60,13 +59,13 @@ import com.keepassdroid.database.edit.CreateDB;
 import com.keepassdroid.database.edit.FileOnFinish;
 import com.keepassdroid.database.exception.ContentFileNotFoundException;
 import com.keepassdroid.intents.Intents;
+import com.keepassdroid.mycode.smartcardConnect;
 import com.keepassdroid.settings.AppSettingsActivity;
 import com.keepassdroid.utils.EmptyUtils;
 import com.keepassdroid.utils.Interaction;
 import com.keepassdroid.utils.UriUtil;
 import com.keepassdroid.utils.Util;
 import com.keepassdroid.view.FileNameView;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -204,6 +203,17 @@ public class FileSelectActivity extends Activity {
 
 			}
 
+		});
+
+
+		//From Pascal
+		//Load or Save Data from/to Smartcard
+		Button btnSmartcard = (Button) findViewById(R.id.btnSmartCard);
+		btnSmartcard.setOnClickListener(new View.OnClickListener() {
+			public void onClick(View v) {
+				Intent i = new Intent(FileSelectActivity.this, smartcardConnect.class);
+				startActivityForResult(i, FILE_BROWSE);
+			}
 		});
 		
 		ImageButton browseButton = (ImageButton) findViewById(R.id.browse_button);
