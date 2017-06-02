@@ -48,7 +48,9 @@ public class zipKDBXFile {
         }
     }
 
-    public static void unzip(String zipFile, String location) throws IOException {
+
+    public static String unzip(String zipFile, String location) throws IOException {
+        String filename = "";
         try {
             File f = new File(location);
             if(!f.isDirectory()) {
@@ -60,6 +62,8 @@ public class zipKDBXFile {
                 while ((ze = zin.getNextEntry()) != null) {
                     String path = location + ze.getName();
 
+                    filename = ze.getName();
+                    Log.v("Unzip:",  ze.getName());
                     if (ze.isDirectory()) {
                         File unzipFile = new File(path);
                         if(!unzipFile.isDirectory()) {
@@ -84,5 +88,6 @@ public class zipKDBXFile {
         } catch (Exception e) {
             Log.e(TAG, "Unzip exception", e);
         }
+        return filename;
     }
 }

@@ -3,6 +3,7 @@ package com.keepassdroid.mycode;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -32,6 +33,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.channels.Channels;
@@ -538,14 +541,6 @@ public class smartcardConnect extends Activity {
         builder.show();
     }
 
-    private void showDialogDownload() {
-        dialog2 = new AlertDialog.Builder(this).create();
-        dialog2.setTitle("Smartcard Import");
-        dialog2.setMessage("Download File...\nPlease wait");
-        dialog2.setCancelable(false);
-        dialog2.show();
-    }
-
     private void loadDataFromSmartCard() {
         byte[] response = null;
         String fileSize_1 = "0000";
@@ -579,13 +574,12 @@ public class smartcardConnect extends Activity {
 
         String endfilepath;
         File file = new File(filenapa);
-        File fi = null;
         int o = 0;
         if (file.exists()) {
-            while (fi.exists()) {
+            while (file.exists()) {
                 o++;
                 endfilepath = filepath + filename + String.valueOf(o) + filesuffix;
-                fi = new File(endfilepath);
+                file = new File(endfilepath);
             }
         }
         final String path = String.valueOf(o);
@@ -593,28 +587,18 @@ public class smartcardConnect extends Activity {
         builder.setPositiveButton("Persistent", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
-                try {
                     statefile = 1;
                     storeData(path, size1, size2, statefile);
                     dialogInterface.dismiss();
-                } catch (Exception e) {
-                    Log.v(logName, "Error: " + e.toString());
-                    Toast.makeText(getApplicationContext(), "Error! Try again", Toast.LENGTH_LONG).show();
-                }
             }
         });
 
         builder.setNegativeButton("Tempoary", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
-                try {
                     statefile = 2;
                     storeData(path, size1, size2, statefile);
                     dialogInterface.dismiss();
-                } catch (Exception e) {
-                    Log.v(logName, "Error: " + e.toString());
-                    Toast.makeText(getApplicationContext(), "Error! Try again", Toast.LENGTH_LONG).show();
-                }
             }
         });
 
@@ -630,43 +614,63 @@ public class smartcardConnect extends Activity {
         builder.show();
     }
 
+    private String writeDataToFile(String data,Context context) {
+        File file = new File("/storage/emulated/0/keepass/zipFile.zip");
+        FileOutputStream stream = null;
 
-    private void storeData(String path, String fileSize_1, String fileSize_2, int statefile) {
-
-        File tmp = new File("/storage/emulated/0/keepass/zipFile.zip");
-        String zipPath = tmp.getAbsolutePath();
-
-        Log.v(logName, "Error: File:" + zipPath);
-        FileOutputStream fileStream = null;
+        String filepath = "";
+        try {
+            filepath = file.getPath();
+            stream = new FileOutputStream(file);
+        } catch (IOException e) {
+            Log.e("Exception", "File write failed 1: " + e.toString());
+        }
 
         try {
-            fileStream = new FileOutputStream(tmp, false);
+            stream.write(apduCodes.hexToByteArray(data));
+            stream.close();
+
+            String unzipName = zipKDBXFile.unzip(filepath, "/storage/emulated/0/keepass/");
+            File inFile = new File("/storage/emulated/0/keepass/" + unzipName);
+            InputStream in = new FileInputStream(inFile);
+            OutputStream out;
+            File outFile;
+            if(statefile == 1) {
+
+                int random = (int )(Math.random() * 999 + 1);
+                outFile = new File("/storage/emulated/0/keepass/" + String.valueOf(random) + unzipName);
+                outFile.createNewFile();
+                out = new FileOutputStream(outFile);
+                filepath = outFile.getPath();
+
+            } else {
+
+                outFile = File.createTempFile("databaseTMP", ".kdbx", context.getCacheDir());
+                out = new FileOutputStream(outFile);
+
+                filepath = outFile.getPath();
+                outFile.deleteOnExit();
+            }
+
+            byte[] buf = new byte[1024];
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
+            }
+            in.close();
+            out.close();
+
+            inFile.delete();
+            file.delete();
 
         } catch (Exception e) {
-            Log.v(logName, "Error: Exception:" + e.toString());
-            Toast.makeText(getApplicationContext(), "Error! Try again", Toast.LENGTH_LONG).show();
+            Log.e("Exception", "File write failed 2: " + e.toString());
         }
 
-        AlertDialog.Builder builder2 = new AlertDialog.Builder(this);
-        if (fileStream == null) {
-            builder2.setTitle("Smartcard Import");
-            builder2.setMessage("Error Creating File");
-            builder2.create().show();
+        return filepath;
+    }
 
-            builder2.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    Intent in = new Intent();
-                    in.setData(null);
-                    setResult(RESULT_OK, in);
-                    finish();
-                }
-            });
-            builder2.setCancelable(false);
-            builder2.show();
-        } else {
-            showDialogDownload();
-        }
+    private void storeData(String path, String fileSize_1, String fileSize_2, int statefile) {
 
         int fileSize1 = Integer.parseInt(fileSize_1, 16);
         int fileSize2 = Integer.parseInt(fileSize_2, 16);
@@ -678,7 +682,9 @@ public class smartcardConnect extends Activity {
         Log.v(logName, "Size File 2 :" + String.valueOf(fileSize2) + " Byte");
         Log.v(logName, "Start Download File 1");
 
+
         StringBuilder sb = new StringBuilder();
+        boolean readDataSuccessful = true;
         while (fileOffset != fileSize1) {
 
             if ((fileOffset + 250) > fileSize1) {
@@ -703,14 +709,15 @@ public class smartcardConnect extends Activity {
             }
 
             if (apduCodes.getResponseStatus(resp)) {
-                String data = apduCodes.byteToString(resp);
-                sb.append(data);
 
+                sb.append(apduCodes.getResponseData(resp));
                 fileOffset = fileOffset + readLength;
 
-            } else if (errorTryCounter != 0 && !apduCodes.getResponseStatus(resp)){
-
+            } else {
                 errorTryCounter--;
+            }
+            if (errorTryCounter == 0) {
+                readDataSuccessful = false;
                 break;
             }
 
@@ -746,14 +753,15 @@ public class smartcardConnect extends Activity {
                 }
 
                 if (apduCodes.getResponseStatus(resp)) {
-                    String data = apduCodes.byteToString(resp);
-                    sb.append(data);
 
+                    sb.append(apduCodes.getResponseData(resp));
                     fileOffset = fileOffset + readLength;
 
-                } else if (errorTryCounter != 0 && !apduCodes.getResponseStatus(resp)){
-
+                } else {
                     errorTryCounter--;
+                }
+                if (errorTryCounter == 0) {
+                    readDataSuccessful = false;
                     break;
                 }
 
@@ -765,60 +773,23 @@ public class smartcardConnect extends Activity {
             dialog2.dismiss();
         }
 
-        try {
-            Writer writer = Channels.newWriter(new FileOutputStream(tmp.getAbsoluteFile(), true).getChannel(), "UTF-8");
-            writer.append(sb);
-        } catch (Exception e) {
-            Log.v(logName, "Error! Exception: " + e.toString());
-        }
+        if (readDataSuccessful) {
+            Toast.makeText(getApplicationContext(), "File Transfer Complete", Toast.LENGTH_LONG).show();
+            //writeDataToFile(sb.toString(), this);
+            String pathFile = writeDataToFile(sb.toString(), this);
+            String newPath = pathFile;
 
-        Toast.makeText(getApplicationContext(), "File Transfer Complete", Toast.LENGTH_LONG).show();
+            Intent in = new Intent();
+            File fi = new File(newPath);
+            Uri uri = Uri.fromFile(fi);
+            in.setData(uri);
+            setResult(RESULT_OK, in);
+            finish();
 
-        Random rand = new Random();
-        int  n = rand.nextInt(50) + 1;
-        try{
-            createTempFile("zipFile", ".zip", tmp);
-
-            zipKDBXFile.unzip(zipPath, "/storage/emulated/0/keepass/file");
-        } catch (Exception e) {
-            Log.v(logName, "Error! Exception: " + e.toString());
-        }
-        //File zipFile = new File("/storage/emulated/0/keepass/keepass-" + n + ".kdbx");
-
-
-        String pathFile = "";
-
-        if (statefile == 2) {
-            File file;
-            try {
-                file = createTempFile("databaseTMP.kdbx", null, this.getCacheDir());
-                //FileInputStream fiInput = new FileInputStream(zipFile);
-                FileOutputStream fiOutput = new FileOutputStream(file);
-                //byte[] buffer = new byte[(int)fiInput.getChannel().size()];
-                //fiInput.read(buffer);
-                //fiOutput.write(buffer);
-                //fiInput.close();
-                fiOutput.close();
-
-                file.deleteOnExit();
-                pathFile = file.getAbsolutePath();
-                //zipFile.delete();
-            } catch (IOException e) {
-                Log.v(logName, "Error! Exception: " + e.toString());
-            }
         } else {
-            //pathFile = zipFile.getPath();
+            Toast.makeText(getApplicationContext(), "File Transfer Failed! Please try again.", Toast.LENGTH_LONG).show();
         }
 
-
-
-
-        Intent in = new Intent();
-        File fi = new File(pathFile);
-        Uri uri = Uri.fromFile(fi);
-        in.setData(uri);
-        setResult(RESULT_OK, in);
-        finish();
     }
 
     private void saveDataToSmartCard() {
@@ -1064,10 +1035,10 @@ public class smartcardConnect extends Activity {
             String sendData = apduCodes.byteToString(buff);
             String lc = apduCodes.StringToHex(dataread +2);
             String fileoffset = apduCodes.StringToHex(totalread);
+
             if (fileoffset.length() == 2) {
                 fileoffset = "00" + fileoffset;
             }
-            Log.v("AppData:", sendData);
             String datatosend = "804103" + "01" + lc + fileoffset + sendData;
             byte[] response1 = sendandReciveData(apduCodes.hexToByteArray(datatosend));
 
