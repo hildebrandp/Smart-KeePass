@@ -103,7 +103,6 @@ public class PasswordActivity extends LockingActivity {
         Intent i = new Intent(act, PasswordActivity.class);
         i.putExtra(KEY_FILENAME, fileName);
         i.putExtra(KEY_KEYFILE, keyFile);
-
         act.startActivityForResult(i, 0);
 
     }
@@ -356,7 +355,7 @@ public class PasswordActivity extends LockingActivity {
         @Override
         protected Integer doInBackground(Intent... args) {
             Intent i = args[0];
-            String action = i.getAction();;
+            String action = i.getAction();
             if ( action != null && action.equals(VIEW_INTENT) ) {
                 Uri incoming = i.getData();
                 mDbUri = incoming;

@@ -1,5 +1,7 @@
 package com.keepassdroid.mycode;
 
+import org.spongycastle.util.encoders.Hex;
+
 import java.util.Arrays;
 
 /**
@@ -9,6 +11,9 @@ import java.util.Arrays;
 public class apduCodes {
 
     public static final byte[] apduSelectApplet = hexToByteArray("00a40400081122334455667788");
+    public static final byte[] apduGetFileName = hexToByteArray("80450101");
+    public static final byte[] apdudeleteFile = hexToByteArray("80430303");
+    public static final byte[] apduGetFileSize = hexToByteArray("80440304");
     private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
 
     public static byte[] hexToByteArray(String data) {
@@ -122,5 +127,24 @@ public class apduCodes {
             hexChars[j * 2 + 1] = hexArray[v & 0x0F];
         }
         return new String(hexChars);
+    }
+
+    public static String dataHexToString(String hexData) {
+        StringBuilder sb = new StringBuilder();
+        StringBuilder temp = new StringBuilder();
+
+        for( int i = 0; i < hexData.length()-1; i += 2 ){
+
+            //grab the hex in pairs
+            String output = hexData.substring(i, (i + 2));
+            //convert hex to decimal
+            int decimal = Integer.parseInt(output, 16);
+            //convert the decimal to character
+            sb.append((char)decimal);
+
+            temp.append(decimal);
+        }
+
+        return sb.toString();
     }
 }
