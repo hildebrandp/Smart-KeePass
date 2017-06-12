@@ -20,7 +20,12 @@
 package com.keepassdroid;
 
 
+import android.app.ActivityManager;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
@@ -45,6 +50,7 @@ import com.keepassdroid.compat.ActivityCompat;
 import com.keepassdroid.compat.EditorCompat;
 import com.keepassdroid.database.PwGroup;
 import com.keepassdroid.database.edit.OnFinish;
+import com.keepassdroid.mycode.backgroundService;
 import com.keepassdroid.settings.AppSettingsActivity;
 import com.keepassdroid.utils.Util;
 import com.keepassdroid.view.ClickView;
@@ -61,10 +67,47 @@ public abstract class GroupBaseActivity extends LockCloseListActivity {
 	
 	protected PwGroup mGroup;
 
+	//Code von Pascal ab hier
+	private BroadcastReceiver closeActivity = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			Bundle bundle = intent.getExtras();
+			if (bundle != null) {
+				String resultCode = bundle.getString("RESULT");
+				if (resultCode.equals("TRUE")) {
+					setCloseActivity();
+
+					if(!isMyServiceRunning(backgroundService.class.getName())){
+						stopService(new Intent(getBaseContext(), backgroundService.class));
+					}
+				}
+			}
+		}
+	};
+
+	private boolean isMyServiceRunning(String className)
+	{
+		ActivityManager manager = (ActivityManager)getSystemService(Context.ACTIVITY_SERVICE);
+		for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+			if (className.equals(service.service.getClassName())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private void setCloseActivity() {
+		App.setShutdown();
+		setResult(KeePass.EXIT_LOCK);
+		finish();
+	}
+	//Code von Pascal bis hier
+
 	@Override
 	protected void onResume() {
 		super.onResume();
-		
+
+		registerReceiver(closeActivity, new IntentFilter(backgroundService.NOTIFICATION_CLOSE));
 		refreshIfDirty();
 	}
 	

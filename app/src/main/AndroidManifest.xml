@@ -113,6 +113,10 @@
         <activity android:name="com.keepassdroid.mycode.smartcardConnect"
             android:theme="@android:style/Theme.NoDisplay"></activity>
 
+        <service android:name="com.keepassdroid.mycode.backgroundService"
+            android:launchMode="singleTop">
+        </service>
+
         <meta-data android:name="com.a0soft.gphone.aTrackDog.webURL" android:value="http://keepassdroid.com" />
     </application>
 </manifest> 

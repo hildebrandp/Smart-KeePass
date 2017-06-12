@@ -215,7 +215,9 @@ public class FileSelectActivity extends Activity {
 				startActivityForResult(i, FILE_BROWSE);
 			}
 		});
-		
+
+
+
 		ImageButton browseButton = (ImageButton) findViewById(R.id.browse_button);
 		browseButton.setOnClickListener(new View.OnClickListener() {
 			

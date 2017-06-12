@@ -37,8 +37,7 @@ public class zipKDBXFile {
                     while ((count = origin.read(data, 0, BUFFER_SIZE)) != -1) {
                         out.write(data, 0, count);
                     }
-                }
-                finally {
+                } finally {
                     origin.close();
                 }
             }

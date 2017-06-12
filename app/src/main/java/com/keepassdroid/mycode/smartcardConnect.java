@@ -1,59 +1,36 @@
 package com.keepassdroid.mycode;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Path;
-import android.net.Uri;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.IsoDep;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.Parcelable;
 import android.os.Vibrator;
-import android.provider.MediaStore;
 import android.text.InputType;
 import android.util.Log;
-import android.view.View;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.Toast;
-
-import com.android.keepass.KeePass;
-import com.android.keepass.R;
 import com.keepassdroid.PasswordActivity;
 import com.keepassdroid.app.App;
-import com.keepassdroid.database.exception.ContentFileNotFoundException;
-import com.keepassdroid.fileselect.FileSelectActivity;
 import com.keepassdroid.fileselect.RecentFileHistory;
-import com.keepassdroid.utils.StrUtil;
 import com.keepassdroid.utils.UriUtil;
-
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.nio.channels.Channels;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
-import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import static java.io.File.createTempFile;
 
 
 /**
@@ -63,16 +40,15 @@ import static java.io.File.createTempFile;
  */
 
 
-public class smartcardConnect extends Activity {
+public class smartcardConnect extends Activity
+{
 
     private boolean isFirstConnect = true;
     private NfcAdapter nfcAdapter;
     private PendingIntent mPendingIntent;
-    private static IsoDep myNFCTag;
+    public static IsoDep myNFCTag;
     private String[][] mTechLists;
     private IntentFilter[] mFilters;
-
-    private boolean doubleBackToExitPressedOnce = false;
 
     private static final String logNameSend = "APDU-Commands >> ";
     private static final String logNameRecive = "APDU-Commands << ";
@@ -89,11 +65,11 @@ public class smartcardConnect extends Activity {
     private String inputPUK;
     private int statefile = 0;
 
-
     private RecentFileHistory fileHistory;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState)
+    {
         super.onCreate(savedInstanceState);
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
@@ -101,14 +77,13 @@ public class smartcardConnect extends Activity {
 
         mPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0);
         IntentFilter ndef = new IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED);
-        try
-        {
+
+        try {
             ndef.addDataType("*/*");
-        }
-        catch (IntentFilter.MalformedMimeTypeException e)
-        {
+        } catch (IntentFilter.MalformedMimeTypeException e) {
             throw new RuntimeException("fail", e);
         }
+
         mFilters = new IntentFilter[] { ndef, };
         mTechLists = new String[][] { new String[] { IsoDep.class.getName() } };
 
@@ -117,22 +92,23 @@ public class smartcardConnect extends Activity {
     }
 
     @Override
-    protected void onResume() {
+    protected void onResume()
+    {
         super.onResume();
-        if (nfcAdapter != null)
-        {
+
+        if (nfcAdapter != null) {
             nfcAdapter.enableForegroundDispatch(this, mPendingIntent, mFilters, mTechLists);
         }
     }
 
-    public static byte[] sendandReciveData(byte[] dataToSend) {
+    public static byte[] sendandReciveData(byte[] dataToSend)
+    {
         byte[] resp = null;
 
         try {
             Log.v(logNameSend, apduCodes.byteToHexString(dataToSend));
             resp = myNFCTag.transceive(dataToSend);
             Log.v(logNameRecive, apduCodes.byteToHexString(resp));
-
         } catch (IOException e) {
             Log.v(logName, "No Card Response");
         }
@@ -141,19 +117,21 @@ public class smartcardConnect extends Activity {
     }
 
     @Override
-    protected void onNewIntent(Intent intent) {
+    protected void onNewIntent(Intent intent)
+    {
         setIntent(intent);
         resolveIntent(intent);
     }
 
-    private void resolveIntent(Intent intent) {
+    private void resolveIntent(Intent intent)
+    {
         String action = intent.getAction();
 
         if (NfcAdapter.ACTION_TAG_DISCOVERED.equals(action) || NfcAdapter.ACTION_TECH_DISCOVERED.equals(action) || NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action)) {
+
             Parcelable tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
             final Tag t = (Tag) tag;
             myNFCTag = IsoDep.get(t);
-
 
             if( !myNFCTag.isConnected() ) {
                 try {
@@ -169,63 +147,79 @@ public class smartcardConnect extends Activity {
                 Vibrator vib = (Vibrator) getSystemService(VIBRATOR_SERVICE);
                 vib.vibrate(500);
                 tagID = apduCodes.byteToHexString(t.getId());
+
+                if(!isMyServiceRunning(backgroundService.class.getName())){
+                    Intent intent1 = new Intent(this, backgroundService.class);
+                    startService(intent1);
+                }
+
                 connectToCard();
             }
 
             if (myNFCTag.isConnected() && !isFirstConnect) {
                 String id =  apduCodes.byteToHexString(t.getId());
+
                 if (!id.equals(tagID)) {
                     Toast.makeText(getApplicationContext(), "Wrong Card", Toast.LENGTH_LONG).show();
                     state = (byte)0xFF;
                     stateMPW = (byte)0xFF;
                     inputPUK = "";
 
-                    Intent inte = getIntent();
-                    finish();
-                    startActivity(inte);
+                    closeActivity();
                 }
             }
         }
     }
 
-    private void connectToCard() {
+    private boolean isMyServiceRunning(String className)
+    {
+        ActivityManager manager = (ActivityManager)getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (className.equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
 
+    private void connectToCard()
+    {
         byte[] resp = sendandReciveData(apduCodes.apduSelectApplet);
+
         if (resp != null) {
+
             if(apduCodes.getResponseCode(resp).equals("9000")) {
                 isFirstConnect = false;
                 state = resp[0];
                 Toast.makeText(getApplicationContext(), "Connected with Smartcard!", Toast.LENGTH_LONG).show();
                 dialog1.cancel();
+
                 if(state == (byte)0x00) {
                     personalizeSmartcard1();
                 } else {
-
                     showDialogVerify();
                 }
 
             } else if(apduCodes.getResponseCode(resp).equals("6250")){
-
                 dialog1.dismiss();
                 dialog1 = new AlertDialog.Builder(this).create();
                 dialog1.setTitle("Smartcard Support");
                 dialog1.setMessage("Smartcard status:\n--LOCKED--");
 
                 dialog1.show();
-
-
             } else {
-
-                Toast.makeText(getApplicationContext(), "Smartcard cant connect!", Toast.LENGTH_LONG).show();
+                Toast.makeText(getApplicationContext(), "Smartcard can´t connect!", Toast.LENGTH_LONG).show();
+                closeActivity();
             }
-
 
         } else {
             Toast.makeText(getApplicationContext(), "Smartcard not supported!", Toast.LENGTH_LONG).show();
+            closeActivity();
         }
     }
 
-    private void showDialogConnect() {
+    private void showDialogConnect()
+    {
         dialog1 = new AlertDialog.Builder(this).create();
         dialog1.setTitle("Smartcard Support");
         dialog1.setMessage("Please keep your Card!");
@@ -233,7 +227,8 @@ public class smartcardConnect extends Activity {
         dialog1.show();
     }
 
-    private void showDialogImEx() {
+    private void showDialogImEx()
+    {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Smartcard Support");
@@ -278,17 +273,14 @@ public class smartcardConnect extends Activity {
         builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
             @Override
             public void onCancel(DialogInterface dialogInterface) {
-                Intent in = new Intent();
-                in.setData(null);
-                setResult(RESULT_OK, in);
-                finish();
+                closeActivity();
             }
         });
         builder.show();
-
     }
 
-    private void personalizeSmartcard1() {
+    private void personalizeSmartcard1()
+    {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Smartcard Personalize");
         builder.setMessage("Create KeepPass Smartcard Safe\nPlese Enter your PIN\n(4-32 Characters)");
@@ -308,21 +300,14 @@ public class smartcardConnect extends Activity {
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                Intent in = new Intent();
-                in.setData(null);
-                setResult(RESULT_OK, in);
-                finish();
-                dialog.cancel();
+                closeActivity();
             }
         });
 
         builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
             @Override
             public void onCancel(DialogInterface dialogInterface) {
-                Intent in = new Intent();
-                in.setData(null);
-                setResult(RESULT_OK, in);
-                finish();
+                closeActivity();
             }
         });
 
@@ -330,7 +315,8 @@ public class smartcardConnect extends Activity {
 
     }
 
-    private void personalizeSmartcard2(final String pw) {
+    private void personalizeSmartcard2(final String pw)
+    {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Smartcard Personalize");
         builder.setMessage("Please Repeat your PIN");
@@ -338,6 +324,7 @@ public class smartcardConnect extends Activity {
         final EditText input1 = new EditText(this);
         input1.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
         input1.setHint("Repeat PIN");
+        input1.setFocusable(true);
         builder.setView(input1);
 
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
@@ -348,7 +335,7 @@ public class smartcardConnect extends Activity {
                     String pw = apduCodes.checkLength(input1.getText().toString());
                     String pwl = apduCodes.StringToHex((pw.length() / 2));
 
-                    if ( pw.length() >= 4 && ( pw.length() / 2 ) <= 22 ) {
+                    if ( pw.length() >= 4 && pw.length() <= 32 ) {
 
                         if (!isPINblocked) {
                             String data = "80200001" + pwl + pw;
@@ -359,6 +346,7 @@ public class smartcardConnect extends Activity {
                                 showDialogPUK(resp);
                             } else {
                                 Toast.makeText(getApplicationContext(), "Error! Please try again", Toast.LENGTH_LONG).show();
+                                closeActivity();
                             }
 
                         } else {
@@ -373,10 +361,18 @@ public class smartcardConnect extends Activity {
                                 showDialogVerify();
                             } else {
                                 Toast.makeText(getApplicationContext(), "Error! Please try again", Toast.LENGTH_LONG).show();
+                                personalizeSmartcard1();
                             }
                         }
 
+                    } else {
+                        Toast.makeText(getApplicationContext(), "Error! Wrong Password length!", Toast.LENGTH_LONG).show();
+                        personalizeSmartcard1();
                     }
+
+                } else {
+                    Toast.makeText(getApplicationContext(), "Error! Passwords dosen´t Match!", Toast.LENGTH_LONG).show();
+                    personalizeSmartcard1();
                 }
 
             }
@@ -385,28 +381,22 @@ public class smartcardConnect extends Activity {
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                Intent in = new Intent();
-                in.setData(null);
-                setResult(RESULT_OK, in);
-                finish();
-                dialog.cancel();
+                closeActivity();
             }
         });
 
         builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
             @Override
             public void onCancel(DialogInterface dialogInterface) {
-                Intent in = new Intent();
-                in.setData(null);
-                setResult(RESULT_OK, in);
-                finish();
+                closeActivity();
             }
         });
 
         builder.show();
     }
 
-    private void showDialogPUK(byte[] resp) {
+    private void showDialogPUK(byte[] resp)
+    {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Smartcard Personalize");
         builder.setMessage("Please note your PUK\nIf you forgot your PIN");
@@ -427,18 +417,15 @@ public class smartcardConnect extends Activity {
         builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
             @Override
             public void onCancel(DialogInterface dialogInterface) {
-                Intent in = new Intent();
-                in.setData(null);
-                setResult(RESULT_OK, in);
-                finish();
+                closeActivity();
             }
         });
 
         builder.show();
     }
 
-    private void showDialogVerify(){
-
+    private void showDialogVerify()
+    {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Smartcard Login");
         builder.setMessage("Verify your PIN:");
@@ -455,52 +442,46 @@ public class smartcardConnect extends Activity {
                     String pw = apduCodes.checkLength(input1.getText().toString());
                     String pwl = apduCodes.checkLength(String.valueOf(pw.length() / 2));
 
-                    if (Integer.valueOf(pwl) >= 4 && Integer.valueOf(pwl) <= 32) {
-
+                    if (Integer.valueOf(pwl) >= 2 && Integer.valueOf(pwl) <= 16) {
                         String data = "80210100" + pwl + pw;
                         byte[] resp = sendandReciveData(apduCodes.hexToByteArray(data));
+
                         if (apduCodes.getResponseStatus(resp)) {
                             stateMPW = resp[0];
 
-                            if (state != (byte)00) {
+                            if (state == (byte)02) {
                                 byte[] respName = sendandReciveData(apduCodes.apduGetFileName);
 
                                 if (apduCodes.getResponseStatus(respName)) {
-
                                     cardFileName = apduCodes.dataHexToString(apduCodes.getResponseData(respName));
-
-                                    //Check if file exists call method
-
                                 }
 
                             }
 
                             showDialogImEx();
-
                         } else {
-                            if (resp[0] == (byte)0x63 && (resp[1] & (byte)0xF0) == (byte)0xC0){
+
+                            if (resp[0] == (byte)0x63 && (resp[1] & (byte)0xF0) == (byte)0xC0) {
 
                                 if ((resp[1] & (byte)0x0F) == (byte)0x02) {
-
                                     Toast.makeText(getApplicationContext(), "Wrong PIN: 2 trys left", Toast.LENGTH_LONG).show();
                                     showDialogVerify();
-
                                 } else if ((resp[1] & (byte)0x0F) == (byte)0x01) {
-
                                     Toast.makeText(getApplicationContext(), "Wrong PIN: 1 trys left", Toast.LENGTH_LONG).show();
                                     showDialogVerify();
-
                                 } else if(((resp[1] & (byte)0x0F) == (byte)0x00)){
-
                                     showDialogPINblocked();
                                     isPINblocked = true;
                                 }
+
                             } else {
 
                                 Toast.makeText(getApplicationContext(), "Error! Please try again", Toast.LENGTH_LONG).show();
+                                closeActivity();
                             }
 
                         }
+
                     } else {
                         Toast.makeText(getApplicationContext(), "Wrong Input! Please try again", Toast.LENGTH_LONG).show();
                         showDialogVerify();
@@ -511,28 +492,66 @@ public class smartcardConnect extends Activity {
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                Intent in = new Intent();
-                in.setData(null);
-                setResult(RESULT_OK, in);
-                finish();
-                dialog.cancel();
+                closeActivity();
             }
         });
 
         builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
             @Override
             public void onCancel(DialogInterface dialogInterface) {
-                Intent in = new Intent();
-                in.setData(null);
-                setResult(RESULT_OK, in);
-                finish();
+                closeActivity();
             }
         });
 
         builder.show();
     }
 
-    private void showDialogPINblocked(){
+    private boolean checkFileModified()
+    {
+
+        ArrayList<String> fileList = new ArrayList<>();
+        int i = 0;
+
+        File f = new File("/storage/emulated/0/keepass/");
+        File[] files = f.listFiles();
+
+        for (File inFile : files) {
+            if (!inFile.isDirectory()) {
+                fileList.add(i, inFile.getName());
+                i++;
+            }
+        }
+
+        String cardFileDate = cardFileName.replace("KeePassDatabase-", "");
+        String appFileDate;
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
+        Date appDate = null, cardDate = null;
+
+        for (String name : fileList) {
+            if(name.substring(0, 16).equals("KeePassDatabase-")) {
+                appFileDate = name.replace("KeePassDatabase-", "");
+
+                try {
+                    appDate = dateFormat.parse(appFileDate);
+                    cardDate = dateFormat.parse(cardFileDate);
+                } catch (Exception e) {
+                    Log.v(logName, "Error! Date Exception: " + e.toString());
+                }
+
+                if (appDate.compareTo(cardDate) < 0) {
+
+                    return true;
+
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private void showDialogPINblocked()
+    {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Smartcard Verify");
         builder.setMessage("Your PIN is blocked!\nPlease Enter PUK");
@@ -561,28 +580,22 @@ public class smartcardConnect extends Activity {
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                Intent in = new Intent();
-                in.setData(null);
-                setResult(RESULT_OK, in);
-                finish();
-                dialog.cancel();
+                closeActivity();
             }
         });
 
         builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
             @Override
             public void onCancel(DialogInterface dialogInterface) {
-                Intent in = new Intent();
-                in.setData(null);
-                setResult(RESULT_OK, in);
-                finish();
+                closeActivity();
             }
         });
 
         builder.show();
     }
 
-    private void loadDataFromSmartCard() {
+    private void loadDataFromSmartCard()
+    {
         byte[] response = null;
         String fileSize_1 = "0000";
         String fileSize_2 = "0000";
@@ -592,11 +605,13 @@ public class smartcardConnect extends Activity {
         final String filenapa = filepath + filename +filesuffix;
 
         if(state == (byte)0x02) {
+
             if (myNFCTag.isConnected()) {
                 String data = "8044030400";
                 response = sendandReciveData(apduCodes.hexToByteArray(data));
             } else {
                 Toast.makeText(getApplicationContext(), "Error! No Connection", Toast.LENGTH_LONG).show();
+                closeActivity();
             }
 
             if (apduCodes.getResponseStatus(response)) {
@@ -604,67 +619,110 @@ public class smartcardConnect extends Activity {
                 fileSize_1 = resp.substring(0, 4);
                 fileSize_2 = resp.substring(5, 8);
             }
+
+            final String size1 = fileSize_1;
+            final String size2 = fileSize_2;
+
+            String endfilepath;
+            File file = new File(filenapa);
+            int o = 0;
+            if (file.exists()) {
+                while (file.exists()) {
+                    o++;
+                    endfilepath = filepath + filename + String.valueOf(o) + filesuffix;
+                    file = new File(endfilepath);
+                }
+            }
+            final String path = String.valueOf(o);
+
+            if (checkFileModified()) {
+                //File on Card is newer
+
+                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Smartcard Import");
+                builder.setMessage("Download Persistent or Tempoary");
+
+                builder.setPositiveButton("Persistent", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        statefile = 1;
+                        storeData(size1, size2);
+                        dialogInterface.dismiss();
+                    }
+                });
+
+                builder.setNegativeButton("Tempoary", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        statefile = 2;
+                        storeData(size1, size2);
+                        dialogInterface.dismiss();
+                    }
+                });
+
+                builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface dialogInterface) {
+                        closeActivity();
+                    }
+                });
+                builder.show();
+
+            } else {
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Smartcard Import");
+                builder.setMessage("File on Phone is newer.\nDownload anyway?");
+
+                builder.setPositiveButton("Persistent", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        statefile = 1;
+                        storeData(size1, size2);
+                        dialogInterface.dismiss();
+                    }
+                });
+
+                builder.setNeutralButton("Tempoary", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        statefile = 2;
+                        storeData(size1, size2);
+                        dialogInterface.dismiss();
+                    }
+                });
+
+                builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        closeActivity();
+                    }
+                });
+
+                builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface dialogInterface) {
+                        closeActivity();
+                    }
+                });
+                builder.show();
+            }
+
         }
-
-        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Smartcard Import");
-        builder.setMessage("Download Persistent or Tempoary");
-
-        final String size1 = fileSize_1;
-        final String size2 = fileSize_2;
-
-        String endfilepath;
-        File file = new File(filenapa);
-        int o = 0;
-        if (file.exists()) {
-            while (file.exists()) {
-                o++;
-                endfilepath = filepath + filename + String.valueOf(o) + filesuffix;
-                file = new File(endfilepath);
-            }
-        }
-        final String path = String.valueOf(o);
-
-        builder.setPositiveButton("Persistent", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                    statefile = 1;
-                    storeData(path, size1, size2, statefile);
-                    dialogInterface.dismiss();
-            }
-        });
-
-        builder.setNegativeButton("Tempoary", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                    statefile = 2;
-                    storeData(path, size1, size2, statefile);
-                    dialogInterface.dismiss();
-            }
-        });
-
-        builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-            @Override
-            public void onCancel(DialogInterface dialogInterface) {
-                Intent in = new Intent();
-                in.setData(null);
-                setResult(RESULT_OK, in);
-                finish();
-            }
-        });
-        builder.show();
     }
 
-    private String writeDataToFile(String data,Context context) {
+    private String writeDataToFile(String data,Context context)
+    {
         File file = new File("/storage/emulated/0/keepass/zipFile.zip");
         FileOutputStream stream = null;
-
         String filepath = "";
+
         try {
             filepath = file.getPath();
             stream = new FileOutputStream(file);
         } catch (IOException e) {
             Log.e("Exception", "File write failed 1: " + e.toString());
+            closeActivity();
         }
 
         try {
@@ -676,6 +734,7 @@ public class smartcardConnect extends Activity {
             InputStream in = new FileInputStream(inFile);
             OutputStream out;
             File outFile;
+
             if(statefile == 1) {
 
                 int random = (int )(Math.random() * 999 + 1);
@@ -695,9 +754,11 @@ public class smartcardConnect extends Activity {
 
             byte[] buf = new byte[1024];
             int len;
+
             while ((len = in.read(buf)) > 0) {
                 out.write(buf, 0, len);
             }
+
             in.close();
             out.close();
 
@@ -706,13 +767,14 @@ public class smartcardConnect extends Activity {
 
         } catch (Exception e) {
             Log.e("Exception", "File write failed 2: " + e.toString());
+            closeActivity();
         }
 
         return filepath;
     }
 
-    private void storeData(String path, String fileSize_1, String fileSize_2, int statefile) {
-
+    private void storeData(String fileSize_1, String fileSize_2)
+    {
         int fileSize1 = Integer.parseInt(fileSize_1, 16);
         int fileSize2 = Integer.parseInt(fileSize_2, 16);
 
@@ -726,11 +788,13 @@ public class smartcardConnect extends Activity {
 
         StringBuilder sb = new StringBuilder();
         boolean readDataSuccessful = true;
+
         while (fileOffset != fileSize1) {
 
             if ((fileOffset + 250) > fileSize1) {
                 readLength = fileSize1 - fileOffset;
             }
+
             byte[] resp;
 
             if (myNFCTag.isConnected()) {
@@ -746,17 +810,17 @@ public class smartcardConnect extends Activity {
                 resp = sendandReciveData(apduCodes.hexToByteArray(data));
             } else {
                 Toast.makeText(getApplicationContext(), "Error! No Connection", Toast.LENGTH_LONG).show();
+                closeActivity();
                 break;
             }
 
             if (apduCodes.getResponseStatus(resp)) {
-
                 sb.append(apduCodes.getResponseData(resp));
                 fileOffset = fileOffset + readLength;
-
             } else {
                 errorTryCounter--;
             }
+
             if (errorTryCounter == 0) {
                 readDataSuccessful = false;
                 break;
@@ -770,6 +834,7 @@ public class smartcardConnect extends Activity {
             errorTryCounter = 3;
 
             Log.v(logName, "Start Download File 2");
+
             while (fileOffset != fileSize2) {
 
                 if ((fileOffset + 250) > fileSize2) {
@@ -790,17 +855,17 @@ public class smartcardConnect extends Activity {
                     resp = sendandReciveData(apduCodes.hexToByteArray(data));
                 } else {
                     Toast.makeText(getApplicationContext(), "Error! No Connection", Toast.LENGTH_LONG).show();
+                    closeActivity();
                     break;
                 }
 
                 if (apduCodes.getResponseStatus(resp)) {
-
                     sb.append(apduCodes.getResponseData(resp));
                     fileOffset = fileOffset + readLength;
-
                 } else {
                     errorTryCounter--;
                 }
+
                 if (errorTryCounter == 0) {
                     readDataSuccessful = false;
                     break;
@@ -819,13 +884,14 @@ public class smartcardConnect extends Activity {
             String pathFile = writeDataToFile(sb.toString(), this);
 
             Toast.makeText(getApplicationContext(), pathFile, Toast.LENGTH_LONG).show();
+
             if (stateMPW == 1) {
                 String data = "80310202";
                 byte[] response = sendandReciveData(apduCodes.hexToByteArray(data));
 
                 if (!myNFCTag.isConnected()) {
                     Toast.makeText(getApplicationContext(), "Error! No Connection", Toast.LENGTH_LONG).show();
-
+                    closeActivity();
                 } else if (apduCodes.getResponseStatus(response)) {
                     String masterPW = apduCodes.getResponseData(response);
                     String encodedPW = apduCodes.dataHexToString(masterPW);
@@ -839,60 +905,76 @@ public class smartcardConnect extends Activity {
                 }
 
             } else {
-
                 try {
                     PasswordActivity.Launch(smartcardConnect.this, pathFile);
                 } catch (Exception e) {
-                    // Ignore exception
+                    closeActivity();
                 }
             }
 
-
-
-
         } else {
             Toast.makeText(getApplicationContext(), "File Transfer Failed! Please try again.", Toast.LENGTH_LONG).show();
+            closeActivity();
         }
 
     }
 
-    private void saveDataToSmartCard() {
+    private void saveDataToSmartCard()
+    {
         if (fileHistory.hasRecentFiles()) {
-
             String fileName = fileHistory.getDatabaseAt(0);
+            String name = fileName.replace("file://", "");
+            File fi = new File(name);
+            Log.v("Smartcard: ", "File: " + name);
 
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setTitle("Smartcard Export");
-            builder.setMessage("Last File:\n" + fileName);
+            if (!fi.exists()) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Smartcard Export");
+                builder.setMessage("File does not Exists!");
 
-            builder.setPositiveButton("Export", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    storeOnSmartcard(fileHistory.getDatabaseAt(0));
-                }
-            });
+                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        closeActivity();
+                    }
+                });
 
-            builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    Intent in = new Intent();
-                    in.setData(null);
-                    setResult(RESULT_OK, in);
-                    finish();
-                }
-            });
+                builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface dialogInterface) {
+                        closeActivity();
+                    }
+                });
 
-            builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                @Override
-                public void onCancel(DialogInterface dialogInterface) {
-                    Intent in = new Intent();
-                    in.setData(null);
-                    setResult(RESULT_OK, in);
-                    finish();
-                }
-            });
+                builder.show();
+            } else {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Smartcard Export");
+                builder.setMessage("Last File:\n" + fileName);
 
-            builder.show();
+                builder.setPositiveButton("Export", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        storeOnSmartcard(fileHistory.getDatabaseAt(0));
+                    }
+                });
+
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        closeActivity();
+                    }
+                });
+
+                builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface dialogInterface) {
+                        closeActivity();
+                    }
+                });
+
+                builder.show();
+            }
 
         } else {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -902,30 +984,23 @@ public class smartcardConnect extends Activity {
             builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
-                    Intent in = new Intent();
-                    in.setData(null);
-                    setResult(RESULT_OK, in);
-                    finish();
+                    closeActivity();
                 }
             });
 
             builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
                 @Override
                 public void onCancel(DialogInterface dialogInterface) {
-                    Intent in = new Intent();
-                    in.setData(null);
-                    setResult(RESULT_OK, in);
-                    finish();
+                    closeActivity();
                 }
             });
 
             builder.show();
         }
-
     }
 
-    private void storeOnSmartcard(String filename) {
-
+    private void storeOnSmartcard(String filename)
+    {
         final String fileName = filename.replace("file://","");
         final String zipName;
         int filesize = 0;
@@ -937,7 +1012,7 @@ public class smartcardConnect extends Activity {
 
         long dateModified = oldFile.lastModified();
         Date date = new Date(dateModified);
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
         String dateString = sdf.format(date);
 
         final String newFileName = "KeePassDatabase-" + dateString + ".kdbx";
@@ -945,20 +1020,20 @@ public class smartcardConnect extends Activity {
 
         if (oldFile.renameTo(newFile)) {
             Log.v("Smartcard: ", "Rename File success");
-        }
 
-        System.gc();
-        Thread.yield();
+            System.gc();
+            Thread.yield();
+
+            fileHistory.deleteFile(UriUtil.parseDefaultFile(filename));
+        }
 
         String[] zipFiles = new String[1];
         zipFiles[0] = newFile.getAbsolutePath();
 
-        zipName = newFile.getName().replace(".kdbx", ".zip");
+        zipName = newFile.getAbsolutePath().replace(".kdbx", ".zip");
 
-        Log.v("Smartcard: ", "Open File: " + newFile.getAbsolutePath());
         try {
             fileInput = new FileInputStream(newFile.getAbsolutePath());
-
         } catch (Exception e) {
             Log.v("Smartcard: ", e.toString());
 
@@ -976,15 +1051,29 @@ public class smartcardConnect extends Activity {
                 }
             });
 
+            builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                @Override
+                public void onCancel(DialogInterface dialogInterface) {
+                    closeActivity();
+                }
+            });
+
             builder.show();
         }
 
         try{
             zipKDBXFile.zip(zipFiles, zipName);
+        } catch (Exception e) {
+            Log.v(logName, "Error! Zipping: " + e.toString());
+            closeActivity();
+        }
+
+        try{
             fileInput = new FileInputStream(zipName);
             filesize = (int) fileInput.getChannel().size();
         } catch (Exception e) {
             Log.v(logName, "Error! Exception: " + e.toString());
+            closeActivity();
         }
 
         Log.v(logName, "File Size: " + String.valueOf(filesize) + "B");
@@ -1004,13 +1093,40 @@ public class smartcardConnect extends Activity {
                 }
             });
 
+            builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                @Override
+                public void onCancel(DialogInterface dialogInterface) {
+                    closeActivity();
+                }
+            });
+
             builder.show();
         }
 
         if(state == (byte)0x02) {
-            AlertDialog.Builder builder4 = new AlertDialog.Builder(this);
-            builder4.setTitle("Smartcard Export");
-            builder4.setMessage("File on Smartcard found\nDelete?");
+            String appFileDate = newFile.getName().replace("KeePassDatabase-", "");
+            String cardFileDate = cardFileName.replace("KeePassDatabase-", "");
+
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
+            Date appDate = null, cardDate = null;
+
+            try {
+                appDate = dateFormat.parse(appFileDate);
+                cardDate = dateFormat.parse(cardFileDate);
+            } catch (Exception e) {
+                Log.v(logName, "Error! Date Exception: " + e.toString());
+            }
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Smartcard Export");
+
+            if (appDate.compareTo(cardDate) < 0) {
+                builder.setMessage("File on Smartcard is newer\nDelete anyway?");
+            } else if (appDate.compareTo(cardDate) == 0) {
+                builder.setMessage("Same File on Smartcard Found!\nNo need for Upload.\nPress NO for cancel Upload");
+            } else {
+                builder.setMessage("Older File on Smartcard found\nDelete?");
+            }
 
             final int filesizeTMP = filesize;
             final int file_1_sizeTMP = file_1_size;
@@ -1019,7 +1135,7 @@ public class smartcardConnect extends Activity {
             final String fileNameTMP = newFile.getAbsolutePath();
             final String zipNameTMP = zipName;
 
-            builder4.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialogInterface, int i) {
                     String data = "80430303";
@@ -1027,39 +1143,36 @@ public class smartcardConnect extends Activity {
 
                     if (!myNFCTag.isConnected()) {
                         Toast.makeText(getApplicationContext(), "Error! No Connection", Toast.LENGTH_LONG).show();
-
+                        closeActivity();
                     } else if (apduCodes.getResponseStatus(response)) {
                         Toast.makeText(getApplicationContext(), "File deleted!", Toast.LENGTH_LONG).show();
                         uploadDataToSmartcard(filesizeTMP, file_2_sizeTMP, newFileName, fileInputTMP, fileNameTMP, zipNameTMP);
-
                     }
                 }
             });
 
-            builder4.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialogInterface, int i) {
                     showDialogImEx();
                 }
             });
 
-            builder4.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
                 @Override
                 public void onCancel(DialogInterface dialogInterface) {
                     showDialogImEx();
                 }
             });
-            builder4.setCancelable(false);
-            builder4.show();
+            builder.setCancelable(false);
+            builder.show();
         } else {
-
             uploadDataToSmartcard(filesize, file_2_size, newFileName, fileInput, fileName, zipName);
         }
-
-
     }
 
-    private void uploadDataToSmartcard (int filesize, int file_2_size, String name, FileInputStream fileInput, final String fileName, String zipName) {
+    private void uploadDataToSmartcard (int filesize, int file_2_size, String name, FileInputStream fileInput, final String fileName, String zipName)
+    {
         AlertDialog builder = new AlertDialog.Builder(this).create();
         builder.setTitle("Smartcard Export");
         builder.setMessage("Creating File...");
@@ -1067,6 +1180,7 @@ public class smartcardConnect extends Activity {
 
         int file_1_size;
         String hexSize1,hexSize2;
+
         if (filesize > 30000) {
             file_1_size = 30000;
             file_2_size = filesize - 30000;
@@ -1078,6 +1192,7 @@ public class smartcardConnect extends Activity {
             hexSize2 = apduCodes.checkLength(hexSize2);
 
             hexSize2 = apduCodes.checkLength(hexSize2);
+
             if (hexSize2.length() == 2) {
                 hexSize2 = "00" + hexSize2;
             }
@@ -1089,8 +1204,7 @@ public class smartcardConnect extends Activity {
             hexSize2 = "0000";
         }
 
-
-        String data = "8040030104" + hexSize1 + hexSize2 + apduCodes.dataStringToHex(name);
+        String data = "804003012C" + hexSize1 + hexSize2 + apduCodes.dataStringToHex(name);
         byte[] response = sendandReciveData(apduCodes.hexToByteArray(data));
 
         if (!apduCodes.getResponseStatus(response) || !myNFCTag.isConnected()) {
@@ -1101,17 +1215,16 @@ public class smartcardConnect extends Activity {
         int dataread = 250, totalread = 0;
         boolean dataleft = true, stop = false;
 
-        builder.setMessage("Copy File\nPlease wait");
-        builder.show();
-
         int totalOffset = 0;
         while (dataleft) {
 
             byte[] buff = new byte[dataread];
+
             try {
                 fileInput.read(buff);
             } catch (Exception e) {
                 Log.v(logName, "Error! Exception: " + e.toString());
+                closeActivity();
             }
 
             String sendData = apduCodes.byteToString(buff);
@@ -1121,6 +1234,7 @@ public class smartcardConnect extends Activity {
             if (fileoffset.length() == 2) {
                 fileoffset = "00" + fileoffset;
             }
+
             String datatosend = "804103" + "01" + lc + fileoffset + sendData;
             byte[] response1 = sendandReciveData(apduCodes.hexToByteArray(datatosend));
 
@@ -1133,12 +1247,15 @@ public class smartcardConnect extends Activity {
             if (stop) {
                 break;
             }
+
             totalread = totalread + dataread;
             totalOffset = totalOffset + dataread;
+
             if ((file_1_size - totalread) < 250) {
                 dataread = (filesize - totalread);
                 stop = true;
             }
+
         }
 
         if (file_2_size > 0) {
@@ -1159,15 +1276,18 @@ public class smartcardConnect extends Activity {
                     fileInput.read(buff);
                 } catch (Exception e) {
                     Log.v(logName, "Error! Exception: " + e.toString());
+                    closeActivity();
                 }
 
                 String sendData = apduCodes.byteToString(buff);
 
                 String lc = apduCodes.StringToHex(dataread +2);
                 String fileoffset = apduCodes.StringToHex(totalread);
+
                 if (fileoffset.length() == 2) {
                     fileoffset = "00" + fileoffset;
                 }
+
                 Log.v("AppData:", sendData);
                 String datatosend = "804103" + "02" + lc + fileoffset + sendData;
                 byte[] response1 = sendandReciveData(apduCodes.hexToByteArray(datatosend));
@@ -1190,7 +1310,10 @@ public class smartcardConnect extends Activity {
             fileInput.close();
         } catch (Exception e) {
             Log.v(logName, "Error! Exception: " + e.toString());
+            closeActivity();
         }
+
+        builder.dismiss();
 
         AlertDialog.Builder builder3 = new AlertDialog.Builder(this);
         builder3.setTitle("Smartcard Export");
@@ -1214,26 +1337,24 @@ public class smartcardConnect extends Activity {
         builder3.setNegativeButton("No", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-
+                fileHistory.createFile(UriUtil.parseDefaultFile("file://" + fileName), null);
                 showDialogMasterPW();
             }
         });
 
         try {
-
             File fi = new File(zipName);
-            //fi.delete();
-
+            fi.delete();
         } catch (Exception e) {
             Log.v(logName, "Error! Exception: " + e.toString());
+            closeActivity();
         }
 
         builder3.show();
-
-        showDialogFinishUpload();
     }
 
-    private void showDialogFinishUpload() {
+    private void showDialogFinishUpload()
+    {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Smartcard Export");
         builder.setMessage("Upload Finished");
@@ -1248,10 +1369,18 @@ public class smartcardConnect extends Activity {
             }
         });
 
+        builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialogInterface) {
+                closeActivity();
+            }
+        });
+
         builder.show();
     }
 
-    private void showDialogMasterPW() {
+    private void showDialogMasterPW()
+    {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Smartcard Export");
         builder.setMessage("Safe Master Password on Smartcard?");
@@ -1276,12 +1405,15 @@ public class smartcardConnect extends Activity {
                 masterpwlength = apduCodes.checkLength(masterpwlength);
 
                 byte[] response = null;
+
                 if(stateMPW == (byte)0x01) {
+
                     if (myNFCTag.isConnected()) {
                         String data = "8032020300";
                         response = sendandReciveData(apduCodes.hexToByteArray(data));
                     } else {
                         Toast.makeText(getApplicationContext(), "Error! No Connection", Toast.LENGTH_LONG).show();
+                        closeActivity();
                     }
 
                     if (apduCodes.getResponseStatus(response)) {
@@ -1295,14 +1427,12 @@ public class smartcardConnect extends Activity {
                     response = sendandReciveData(apduCodes.hexToByteArray(data));
                 } else {
                     Toast.makeText(getApplicationContext(), "Error! No Connection", Toast.LENGTH_LONG).show();
+                    closeActivity();
                 }
 
                 if (apduCodes.getResponseStatus(response)) {
                     Log.v(logName, "New Master Password saved!");
-                    Intent in = new Intent();
-                    in.setData(null);
-                    setResult(RESULT_OK, in);
-                    finish();
+                    showDialogFinishUpload();
                 }
             }
         });
@@ -1310,36 +1440,22 @@ public class smartcardConnect extends Activity {
         builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                Intent in = new Intent();
-                in.setData(null);
-                setResult(RESULT_OK, in);
-                finish();
+                showDialogFinishUpload();
             }
         });
 
         builder.show();
     }
 
-    @Override
-    public void onBackPressed() {
-        if (doubleBackToExitPressedOnce) {
-            Intent in = new Intent();
-            in.setData(null);
-            setResult(RESULT_OK, in);
-            finish();
-
-            super.onBackPressed();
-            return;
+    private void closeActivity()
+    {
+        if(!isMyServiceRunning(backgroundService.class.getName())){
+            stopService(new Intent(getBaseContext(), backgroundService.class));
         }
 
-        this.doubleBackToExitPressedOnce = true;
-        Toast.makeText(this, "Please click BACK again to exit", Toast.LENGTH_SHORT).show();
-
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                doubleBackToExitPressedOnce = false;
-            }
-        }, 2000);
+        Intent in = new Intent();
+        in.setData(null);
+        setResult(RESULT_OK, in);
+        finish();
     }
 }
