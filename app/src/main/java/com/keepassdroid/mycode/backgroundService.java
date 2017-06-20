@@ -83,6 +83,7 @@ public class backgroundService extends Service
                         sendBroadcast(intent);
 
                         Toast.makeText(getApplicationContext(), "Smartcard disconnect!", Toast.LENGTH_LONG).show();
+                        mTimer.cancel();
                     }
 
                 }

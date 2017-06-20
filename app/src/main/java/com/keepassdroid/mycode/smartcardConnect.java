@@ -186,21 +186,23 @@ public class smartcardConnect extends Activity
     {
         byte[] resp = sendandReciveData(apduCodes.apduSelectApplet);
 
-        if (resp != null) {
+        if ( resp != null ) {
 
-            if(apduCodes.getResponseCode(resp).equals("9000")) {
+            if (apduCodes.getResponseCode(resp).equals("9000")) {
                 isFirstConnect = false;
                 state = resp[0];
                 Toast.makeText(getApplicationContext(), "Connected with Smartcard!", Toast.LENGTH_LONG).show();
                 dialog1.cancel();
 
-                if(state == (byte)0x00) {
+                if ( state == (byte)0x00 ) {
                     personalizeSmartcard1();
+                } else if ( state == (byte)0x03 ) {
+                    showDialogPINblocked();
                 } else {
                     showDialogVerify();
                 }
 
-            } else if(apduCodes.getResponseCode(resp).equals("6250")){
+            } else if ( apduCodes.getResponseCode(resp).equals("6250") ) {
                 dialog1.dismiss();
                 dialog1 = new AlertDialog.Builder(this).create();
                 dialog1.setTitle("Smartcard Support");
@@ -229,7 +231,6 @@ public class smartcardConnect extends Activity
 
     private void showDialogImEx()
     {
-
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Smartcard Support");
 
@@ -269,6 +270,13 @@ public class smartcardConnect extends Activity
                 }
             });
         }
+
+        builder.setNeutralButton("Settings", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+
+            }
+        });
 
         builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
             @Override
@@ -735,16 +743,13 @@ public class smartcardConnect extends Activity
             OutputStream out;
             File outFile;
 
-            if(statefile == 1) {
-
+            if (statefile == 1) {
                 int random = (int )(Math.random() * 999 + 1);
                 outFile = new File("/storage/emulated/0/keepass/" + String.valueOf(random) + unzipName);
                 outFile.createNewFile();
                 out = new FileOutputStream(outFile);
                 filepath = outFile.getPath();
-
             } else {
-
                 outFile = File.createTempFile("databaseTMP", ".kdbx", context.getCacheDir());
                 out = new FileOutputStream(outFile);
 
