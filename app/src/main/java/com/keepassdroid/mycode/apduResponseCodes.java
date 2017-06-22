@@ -2,11 +2,14 @@ package com.keepassdroid.mycode;
 
 /**
  * Created by Pascal Hildebrand on 17.05.2017.
+ * Class for Converting the Response Code to Text
  */
 
 public enum apduResponseCodes {
 
-
+    /**
+     * Response Codes with related error code
+     */
     SW001("9000", "Successful"),
     SW002("6200", "No information given"),
     SW003("6281", "Part of returned data may be corrupted"),
@@ -43,12 +46,15 @@ public enum apduResponseCodes {
     SW034("6D00", "Instruction code not supported or invalid"),
     SW035("6E00", "Class not supported"),
     SW036("6F00", "No precise diagnostics"),
-    SW037("6250", "Card Locked");
+    SW037("6250", "Card Locked"),
+    SW038("63C2", "Pin Wrong, 2 tries left"),
+    SW039("63C2", "Pin Wrong, 1 tries left"),
+    SW040("63C1", "Pin Wrong, 0 tries left. PIN blocked!");
 
     private String swString;
     private String descString;
 
-    private apduResponseCodes(String swString, String descString)
+    apduResponseCodes(String swString, String descString)
     {
         this.swString = swString;
         this.descString = descString;
@@ -64,16 +70,19 @@ public enum apduResponseCodes {
         return descString;
     }
 
+    /**
+     * Method fo Translating Response Code to Error Message
+     * @param code Response Code from Smartcard
+     * @return Error Message
+     */
     public static String getResponseString(String code)
     {
         apduResponseCodes[] responseCodes = apduResponseCodes.values();
 
-        for(int i = 0; i < responseCodes.length; i++)
-        {
+        for(int i = 0; i < responseCodes.length; i++) {
             apduResponseCodes responseCode = responseCodes[i];
 
-            if(responseCode.getSwString().equalsIgnoreCase(code))
-            {
+            if( responseCode.getSwString().equalsIgnoreCase(code) ) {
                 return responseCode.getDescString();
             }
         }

@@ -16,7 +16,9 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 /**
- * Created by hilde on 12.06.2017.
+ * Created by Pascal Hildebrand
+ * Background Service Class which checks if Smartcard is still connected
+ * If Card isn´t connected anymore it send Message to Open Class
  */
 
 public class backgroundService extends Service
@@ -47,6 +49,13 @@ public class backgroundService extends Service
         myNFCTag = smartcardConnect.myNFCTag;
     }
 
+    /**
+     * Method which starts Timer with interval of 5 seconds
+     * @param intent
+     * @param flags
+     * @param startId
+     * @return
+     */
     @Override
     public int onStartCommand(Intent intent, int flags, int startId)
     {
@@ -54,6 +63,12 @@ public class backgroundService extends Service
         return START_STICKY;
     }
 
+    /**
+     * Timer Method
+     * If dosen´t exists start new Timer
+     * else stop old timer and start new
+     * @param time interval
+     */
     public void startTimer(int time)
     {
         if( mTimer != null ) {
@@ -67,6 +82,11 @@ public class backgroundService extends Service
         Log.v("App:", "Service running!");
     }
 
+    /**
+     * Timer Task which is called in the interval of 5 seconds
+     * The Method checks if the Smartcard is connected
+     * If Card is disconnected it sends Broadcast
+     */
     class checkConnection extends TimerTask
     {
         @Override

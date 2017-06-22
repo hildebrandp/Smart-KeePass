@@ -356,14 +356,22 @@ public class FileSelectActivity extends Activity {
 			}
 			
 			protected void onPostExecute(Void v) {
-				try {
-					PasswordActivity.Launch(FileSelectActivity.this, fileName, keyFile);
-				}
-				catch (ContentFileNotFoundException e) {
-					Toast.makeText(FileSelectActivity.this, R.string.file_not_found_content, Toast.LENGTH_LONG)
-							.show();
-				}
-				catch (FileNotFoundException e) {
+				File fi = new File(fileName);
+				if ( fi.exists() ) {
+					try {
+						PasswordActivity.Launch(FileSelectActivity.this, fileName, keyFile);
+					}
+					catch (ContentFileNotFoundException e) {
+						Toast.makeText(FileSelectActivity.this, R.string.file_not_found_content, Toast.LENGTH_LONG)
+								.show();
+					}
+					catch (FileNotFoundException e) {
+						Toast.makeText(FileSelectActivity.this, R.string.FileNotFound, Toast.LENGTH_LONG)
+								.show();
+					}
+				} else {
+					fileHistory.deleteFile(UriUtil.parseDefaultFile(fileName));
+                    refreshList();
 					Toast.makeText(FileSelectActivity.this, R.string.FileNotFound, Toast.LENGTH_LONG)
 							.show();
 				}

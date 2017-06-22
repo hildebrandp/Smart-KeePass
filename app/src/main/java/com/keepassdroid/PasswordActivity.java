@@ -20,17 +20,28 @@
 package com.keepassdroid;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.AlertDialog;
+import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.nfc.NfcAdapter;
+import android.nfc.Tag;
+import android.nfc.tech.IsoDep;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Parcelable;
+import android.os.Vibrator;
 import android.preference.PreferenceManager;
 import android.text.InputType;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -55,6 +66,8 @@ import com.keepassdroid.database.edit.OnFinish;
 import com.keepassdroid.dialog.PasswordEncodingDialogHelper;
 import com.keepassdroid.fileselect.BrowserDialog;
 import com.keepassdroid.intents.Intents;
+import com.keepassdroid.mycode.apduCodes;
+import com.keepassdroid.mycode.backgroundService;
 import com.keepassdroid.settings.AppSettingsActivity;
 import com.keepassdroid.utils.EmptyUtils;
 import com.keepassdroid.utils.Interaction;
@@ -62,6 +75,7 @@ import com.keepassdroid.utils.UriUtil;
 import com.keepassdroid.utils.Util;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 
 public class PasswordActivity extends LockingActivity {
 
@@ -162,10 +176,10 @@ public class PasswordActivity extends LockingActivity {
         super.onCreate(savedInstanceState);
 
         Intent i = getIntent();
-
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
         mRememberKeyfile = prefs.getBoolean(getString(R.string.keyfile_key), getResources().getBoolean(R.bool.keyfile_default));
         setContentView(R.layout.password);
+
 
         new InitTask().execute(i);
     }
@@ -179,6 +193,24 @@ public class PasswordActivity extends LockingActivity {
         if (App.isShutdown()) {
             TextView password = (TextView) findViewById(R.id.password);
             password.setText("");
+        }
+
+        nfcAdapter = NfcAdapter.getDefaultAdapter(this);
+
+        mPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0);
+        IntentFilter ndef = new IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED);
+
+        try {
+            ndef.addDataType("*/*");
+        } catch (IntentFilter.MalformedMimeTypeException e) {
+            throw new RuntimeException("fail", e);
+        }
+
+        mFilters = new IntentFilter[] { ndef, };
+        mTechLists = new String[][] { new String[] { IsoDep.class.getName() } };
+
+        if (nfcAdapter != null) {
+            nfcAdapter.enableForegroundDispatch(this, mPendingIntent, mFilters, mTechLists);
         }
 
         // Clear the shutdown flag
@@ -216,6 +248,15 @@ public class PasswordActivity extends LockingActivity {
         Toast.makeText(this, text, Toast.LENGTH_LONG).show();
     }
     */
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (nfcAdapter != null) {
+            nfcAdapter.disableForegroundDispatch(this);
+        }
+    }
+
 
     private void errorMessage(int resId)
     {
@@ -505,5 +546,176 @@ public class PasswordActivity extends LockingActivity {
             if (launch_immediately)
                 loadDatabase(password, mKeyUri);
         }
+    }
+
+    //Code von Pascal
+    private boolean isFirstConnect = true;
+    private NfcAdapter nfcAdapter;
+    private PendingIntent mPendingIntent;
+    public static IsoDep myNFCTag;
+    private String[][] mTechLists;
+    private IntentFilter[] mFilters;
+
+    private static final String logNameSend = "APDU-Commands >> ";
+    private static final String logNameRecive = "APDU-Commands << ";
+    private static final String logName = "APDU-Command: ";
+
+    private byte state;
+    private byte stateMPW;
+
+
+    public static byte[] sendandReciveData(byte[] dataToSend)
+    {
+        byte[] resp = null;
+
+        try {
+            Log.v(logNameSend, apduCodes.byteToHexString(dataToSend));
+            resp = myNFCTag.transceive(dataToSend);
+            Log.v(logNameRecive, apduCodes.byteToHexString(resp));
+        } catch (IOException e) {
+            Log.v(logName, "No Card Response");
+        }
+
+        return resp;
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent)
+    {
+        setIntent(intent);
+        resolveIntent(intent);
+    }
+
+    private void resolveIntent(Intent intent)
+    {
+        String action = intent.getAction();
+
+        if (NfcAdapter.ACTION_TAG_DISCOVERED.equals(action) || NfcAdapter.ACTION_TECH_DISCOVERED.equals(action) || NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action)) {
+
+            Parcelable tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+            final Tag t = (Tag) tag;
+            myNFCTag = IsoDep.get(t);
+
+            if( !myNFCTag.isConnected() ) {
+                try {
+                    myNFCTag.connect();
+                    myNFCTag.setTimeout(5000);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return;
+                }
+            }
+
+            if( myNFCTag.isConnected() && isFirstConnect) {
+                Vibrator vib = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+                vib.vibrate(500);
+
+                connectToCard();
+            }
+        }
+    }
+
+    private void connectToCard()
+    {
+        byte[] resp = sendandReciveData(apduCodes.apduSelectApplet);
+
+        if ( resp != null ) {
+
+            if (apduCodes.getResponseCode(resp).equals("9000")) {
+                isFirstConnect = false;
+                state = resp[0];
+                Toast.makeText(getApplicationContext(), "Connected with Smartcard!", Toast.LENGTH_LONG).show();
+
+                if (state == (byte) 0x01 || state == (byte) 0x02) {
+                    showDialogVerify();
+                }
+            }
+        }
+    }
+
+    private void showDialogVerify()
+    {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Smartcard Login");
+        builder.setMessage("Verify your PIN:");
+
+        final EditText input1 = new EditText(this);
+        input1.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+        input1.setHint("PIN");
+        builder.setView(input1);
+
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+                String pw = apduCodes.checkLength(input1.getText().toString());
+                String pwl = apduCodes.checkLength(String.valueOf(pw.length() / 2));
+
+                if (Integer.valueOf(pwl) >= 2 && Integer.valueOf(pwl) <= 16) {
+                    String data = "80210100" + pwl + pw;
+                    byte[] resp = sendandReciveData(apduCodes.hexToByteArray(data));
+
+                    if (apduCodes.getResponseStatus(resp)) {
+                        stateMPW = resp[0];
+
+                        if (stateMPW == 1) {
+                            String send = "80310202";
+                            byte[] response = sendandReciveData(apduCodes.hexToByteArray(send));
+
+                            if (!myNFCTag.isConnected()) {
+                                Toast.makeText(getApplicationContext(), "Error! No Connection", Toast.LENGTH_LONG).show();
+                            } else if (apduCodes.getResponseStatus(response)) {
+                                String masterPW = apduCodes.getResponseData(response);
+                                String encodedPW = apduCodes.dataHexToString(masterPW);
+
+                                loadDatabase(encodedPW, "");
+                            }
+                        }
+
+                    } else {
+
+                        if (resp[0] == (byte)0x63 && (resp[1] & (byte)0xF0) == (byte)0xC0) {
+
+                            if ((resp[1] & (byte)0x0F) == (byte)0x02) {
+                                Toast.makeText(getApplicationContext(), "Wrong PIN: 2 trys left", Toast.LENGTH_LONG).show();
+                                showDialogVerify();
+                            } else if ((resp[1] & (byte)0x0F) == (byte)0x01) {
+                                Toast.makeText(getApplicationContext(), "Wrong PIN: 1 trys left", Toast.LENGTH_LONG).show();
+                                showDialogVerify();
+                            } else if(((resp[1] & (byte)0x0F) == (byte)0x00)){
+                                showDialogPINblocked();
+                            }
+
+                        } else {
+
+                            Toast.makeText(getApplicationContext(), "Error! Please try again", Toast.LENGTH_LONG).show();
+                        }
+
+                    }
+
+                } else {
+                    Toast.makeText(getApplicationContext(), "Wrong Input! Please try again", Toast.LENGTH_LONG).show();
+                    showDialogVerify();
+                }
+            }
+        });
+
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+            }
+        });
+
+        builder.show();
+    }
+
+    private void showDialogPINblocked()
+    {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Smartcard Verify");
+        builder.setMessage("Your PIN is blocked!\nPlease Reset Pin in Settings");
+
+        builder.show();
     }
 }

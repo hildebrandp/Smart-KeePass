@@ -15,11 +15,18 @@ import java.util.zip.ZipOutputStream;
 import static android.content.ContentValues.TAG;
 
 /**
- * Created by hilde on 31.05.2017.
+ * Created by Pascal Hildebrand
+ * Class for Zipping and unzipping Files
  */
 
 public class zipKDBXFile {
 
+    /**
+     * Zip Method
+     * @param files Array with Filen ames with Path
+     * @param zipFile Output Path with Filename
+     * @throws IOException
+     */
     public static void zip(String[] files, String zipFile) throws IOException {
         BufferedInputStream origin = null;
         ZipOutputStream out = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(zipFile)));
@@ -48,6 +55,13 @@ public class zipKDBXFile {
     }
 
 
+    /**
+     * Unzip Method
+     * @param zipFile Input Path of File
+     * @param location Path where the File should be stored
+     * @return File name of unzipped File
+     * @throws IOException
+     */
     public static String unzip(String zipFile, String location) throws IOException {
         String filename = "";
         try {

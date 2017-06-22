@@ -113,9 +113,6 @@
         <activity android:name="com.keepassdroid.mycode.smartcardConnect"
             android:theme="@android:style/Theme.NoDisplay"></activity>
 
-        <activity android:name="com.keepassdroid.mycode.smartcardSettings"
-            android:theme="@android:style/Theme.NoDisplay"></activity>
-
         <service android:name="com.keepassdroid.mycode.backgroundService"
             android:launchMode="singleTop">
         </service>
