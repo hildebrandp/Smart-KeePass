@@ -125,6 +125,11 @@ public class PasswordActivity extends LockingActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
+        if(!isMyServiceRunning(backgroundService.class.getName())){
+            Intent intent1 = new Intent(this, backgroundService.class);
+            stopService(intent1);
+        }
+
         switch (requestCode) {
 
         case KeePass.EXIT_NORMAL:
@@ -227,7 +232,6 @@ public class PasswordActivity extends LockingActivity {
 
     private Uri getKeyFile(Uri dbUri) {
         if ( mRememberKeyfile ) {
-
             return App.getFileHistory().getFileByName(dbUri);
         } else {
             return null;
@@ -562,6 +566,17 @@ public class PasswordActivity extends LockingActivity {
 
     private byte state;
     private byte stateMPW;
+
+    private boolean isMyServiceRunning(String className)
+    {
+        ActivityManager manager = (ActivityManager)getSystemService(Context.ACTIVITY_SERVICE);
+        for ( ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE) ) {
+            if ( className.equals(service.service.getClassName()) ) {
+                return true;
+            }
+        }
+        return false;
+    }
 
 
     public static byte[] sendandReciveData(byte[] dataToSend)

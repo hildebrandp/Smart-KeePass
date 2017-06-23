@@ -273,6 +273,31 @@ public class smartcardConnect extends Activity
         dialog1.setTitle("Smartcard Support");
         dialog1.setMessage("Please keep your Card in the near!");
 
+        dialog1.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialogInterface) {
+                closeActivity();
+            }
+        });
+
+        dialog1.show();
+    }
+
+    private void showDialogUpload()
+    {
+        dialog1 = new AlertDialog.Builder(this).create();
+        dialog1.setTitle("Smartcard Export");
+        dialog1.setMessage("Uploading File....\nPlease wait.");
+
+        dialog1.show();
+    }
+
+    private void showDialogDownload()
+    {
+        dialog1 = new AlertDialog.Builder(this).create();
+        dialog1.setTitle("Smartcard Import");
+        dialog1.setMessage("Downloading File....\nPlease wait.");
+
         dialog1.show();
     }
 
@@ -329,7 +354,7 @@ public class smartcardConnect extends Activity
         String [] choice = {"Change PIN", "Set Master Password", "Delete Master Password", "Delete All Data", "Reset Card"};
 
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Settings").setItems(choice, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
 
@@ -357,6 +382,7 @@ public class smartcardConnect extends Activity
         builder.setPositiveButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
+                builder.create().dismiss();
                 showDialogImEx();
             }
         });
@@ -378,7 +404,7 @@ public class smartcardConnect extends Activity
         builder.setMessage("Reset Smartcard?\nVerify your PUK:");
 
         final EditText input1 = new EditText(this);
-        input1.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+        input1.setInputType(InputType.TYPE_TEXT_VARIATION_PASSWORD);
         input1.setHint("Enter PUK");
         builder.setView(input1);
 
@@ -878,8 +904,8 @@ public class smartcardConnect extends Activity
         }
 
         int cardFileLength = cardFileName.length();
-        String cardFileDate = cardFileName.substring(cardFileLength - 26, cardFileLength - 7);
-        String cardFile = cardFileName.substring(0, cardFileLength - 27);
+        String cardFileDate = cardFileName.substring(cardFileLength - 30, cardFileLength - 11);
+        String cardFile = cardFileName.substring(0, cardFileLength - 31);
 
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
         Date appDate = null, cardDate = null;
@@ -1109,29 +1135,27 @@ public class smartcardConnect extends Activity
             File outFile;
 
             if (statefile == 1) {
-                outFile = new File("/storage/emulated/0/keepass/" + unzipName);
-                outFile.createNewFile();
-                out = new FileOutputStream(outFile);
-                filepath = outFile.getPath();
+                filepath = inFile.getPath();
             } else {
                 outFile = File.createTempFile("databaseTMP", ".kdbx", context.getCacheDir());
                 out = new FileOutputStream(outFile);
 
                 filepath = outFile.getPath();
                 outFile.deleteOnExit();
+
+                byte[] buf = new byte[1024];
+                int len;
+
+                while ((len = in.read(buf)) > 0) {
+                    out.write(buf, 0, len);
+                }
+
+                in.close();
+                out.close();
+
+                inFile.delete();
             }
 
-            byte[] buf = new byte[1024];
-            int len;
-
-            while ((len = in.read(buf)) > 0) {
-                out.write(buf, 0, len);
-            }
-
-            in.close();
-            out.close();
-
-            inFile.delete();
             file.delete();
 
         } catch (Exception e) {
@@ -1144,6 +1168,8 @@ public class smartcardConnect extends Activity
 
     private void storeData(String fileSize_1, String fileSize_2)
     {
+        showDialogDownload();
+
         int fileSize1 = Integer.parseInt(fileSize_1, 16);
         int fileSize2 = Integer.parseInt(fileSize_2, 16);
 
@@ -1248,11 +1274,11 @@ public class smartcardConnect extends Activity
             dialog2.dismiss();
         }
 
+        dialog1.dismiss();
+
         if (readDataSuccessful) {
             Toast.makeText(getApplicationContext(), "File Transfer Complete", Toast.LENGTH_LONG).show();
             String pathFile = writeDataToFile(sb.toString(), this);
-
-            Toast.makeText(getApplicationContext(), pathFile, Toast.LENGTH_LONG).show();
 
             if (stateMPW == 1) {
                 String data = "80310202";
@@ -1327,13 +1353,14 @@ public class smartcardConnect extends Activity
 
                 builder.show();
             } else {
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle("Smartcard Export");
                 builder.setMessage("Last File:\n" + fileName);
 
                 builder.setPositiveButton("Export", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
                         storeOnSmartcard(fileHistory.getDatabaseAt(0));
                     }
                 });
@@ -1478,9 +1505,9 @@ public class smartcardConnect extends Activity
             int cardFileLength = cardFileName.length();
 
             String appFileName = oldFile.getName().replace(".kdbx", "");
-            String cardFile = cardFileName.substring(0, cardFileLength - 27);
+            String cardFile = cardFileName.substring(0, cardFileLength - 31);
             String appFileDate = newFileName.substring(appFileLength - 24, appFileLength - 5);
-            String cardFileDate = cardFileName.substring(cardFileLength - 26, cardFileLength - 7);
+            String cardFileDate = cardFileName.substring(cardFileLength - 30, cardFileLength - 11);
 
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
             Date appDate = null, cardDate = null;
@@ -1495,15 +1522,17 @@ public class smartcardConnect extends Activity
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Smartcard Export");
 
-            if (!appFileName.equals(cardFile)) {
-                builder.setMessage("Different File on Smartcard\nDelete anyway?");
+            Log.v(logName, "File App " + appFileName);
+            Log.v(logName, "File Card " + cardFile);
+            if ( !appFileName.equals(cardFile) ) {
+                builder.setMessage("Different File on Smartcard\nUpload anyway?");
             } else {
-                if (appDate.compareTo(cardDate) < 0) {
-                    builder.setMessage("File on Smartcard is newer\nDelete anyway?");
-                } else if (appDate.compareTo(cardDate) == 0) {
+                if ( appDate.compareTo(cardDate) < 0 ) {
+                    builder.setMessage("File on Smartcard is newer\nUpload anyway?");
+                } else if ( appDate.compareTo(cardDate) == 0 ) {
                     builder.setMessage("Same File on Smartcard Found!\nPress Yes for Upload\nPress NO for cancel Upload");
                 } else {
-                    builder.setMessage("Older File on Smartcard found\nDelete?");
+                    builder.setMessage("Older File on Smartcard found\nUpload anyway?");
                 }
             }
 
@@ -1526,6 +1555,7 @@ public class smartcardConnect extends Activity
                         closeActivity();
                     } else if (apduCodes.getResponseStatus(response)) {
                         Toast.makeText(getApplicationContext(), "File deleted!", Toast.LENGTH_LONG).show();
+                        dialogInterface.dismiss();
                         uploadDataToSmartcard(filesizeTMP, file_2_sizeTMP, newFileName, fileInputTMP, fileNameTMP, zipNameTMP);
                     }
                 }
@@ -1561,16 +1591,14 @@ public class smartcardConnect extends Activity
             builder.setCancelable(false);
             builder.show();
         } else {
+
             uploadDataToSmartcard(filesize, file_2_size, newFileName, fileInput, fileName, zipName);
         }
     }
 
     private void uploadDataToSmartcard (int filesize, int file_2_size, String name, FileInputStream fileInput, final String fileName, String zipName)
     {
-        AlertDialog builder = new AlertDialog.Builder(this).create();
-        builder.setTitle("Smartcard Export");
-        builder.setMessage("Creating File...");
-        builder.show();
+        showDialogUpload();
 
         int file_1_size;
         String hexSize1,hexSize2;
@@ -1710,7 +1738,7 @@ public class smartcardConnect extends Activity
             closeActivity();
         }
 
-        builder.dismiss();
+        dialog1.dismiss();
 
         AlertDialog.Builder builder3 = new AlertDialog.Builder(this);
         builder3.setTitle("Smartcard Export");

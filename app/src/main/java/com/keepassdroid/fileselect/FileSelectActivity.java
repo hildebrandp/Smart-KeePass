@@ -356,7 +356,8 @@ public class FileSelectActivity extends Activity {
 			}
 			
 			protected void onPostExecute(Void v) {
-				File fi = new File(fileName);
+				String Name = fileName.replace("file://", "");
+				File fi = new File(Name);
 				if ( fi.exists() ) {
 					try {
 						PasswordActivity.Launch(FileSelectActivity.this, fileName, keyFile);
