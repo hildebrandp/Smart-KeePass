@@ -61,7 +61,6 @@ public class smartcardConnect extends Activity
     private String tagID;
     private String cardFileName = "";
     private AlertDialog dialog1;
-    private AlertDialog dialog2;
 
     private boolean isPINblocked = false;
     private String inputPUK;
@@ -236,7 +235,7 @@ public class smartcardConnect extends Activity
                 isFirstConnect = false;
                 state = resp[0];
                 Toast.makeText(getApplicationContext(), "Connected with Smartcard!", Toast.LENGTH_LONG).show();
-                dialog1.cancel();
+                //dialog1.cancel();
 
                 if ( state == (byte)0x00 ) {
                     personalizeSmartcard1();
@@ -1267,11 +1266,6 @@ public class smartcardConnect extends Activity
                 }
 
             }
-        }
-
-
-        if (dialog2 != null) {
-            dialog2.dismiss();
         }
 
         dialog1.dismiss();
