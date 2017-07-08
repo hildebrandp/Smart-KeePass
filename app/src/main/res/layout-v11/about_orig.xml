@@ -24,7 +24,7 @@
 	<TextView android:id="@+id/about_title" 
 	  android:layout_width="wrap_content"
 	  android:layout_height="wrap_content"
-	  android:text="Smart KeePass is an Android App for using KeePass."/>
+	  android:text="@string/AboutText"/>
 	<ImageView android:id="@+id/divider1"
 	  android:layout_width="fill_parent"
 	  android:layout_height="wrap_content"
@@ -56,7 +56,7 @@
 	  android:text="@string/about_homepage"/>
 	<TextView android:layout_width="wrap_content"
 	  android:layout_height="wrap_content"
-	  android:text="https://github.com/schisskiss/Smart-KeePass"
+	  android:text="@string/homepage_short"
 	  android:layout_below="@id/divider2"
 	  android:layout_alignParentRight="true"
 	  android:autoLink="web"/>
@@ -64,10 +64,10 @@
 	  android:layout_width="wrap_content"
 	  android:layout_height="wrap_content"
 	  android:layout_below="@id/homepage"
-	  android:text=""/>
+	  android:text="@string/about_feedback"/>
 	<TextView android:layout_width="wrap_content"
 	  android:layout_height="wrap_content"
-	  android:text=""
+	  android:text="@string/issues"
 	  android:layout_below="@id/homepage"
 	  android:layout_alignParentRight="true"
 	  android:autoLink="web"/>
@@ -75,10 +75,10 @@
 	  android:layout_width="wrap_content"
 	  android:layout_height="wrap_content"
 	  android:layout_below="@id/feedback"
-	  android:text=""/>
+	  android:text="@string/about_twitter"/>
 	<TextView android:layout_width="wrap_content"
 	  android:layout_height="wrap_content"
-	  android:text=""
+	  android:text="@string/twitter"
 	  android:layout_below="@id/feedback"
 	  android:layout_alignParentRight="true"
 	  android:autoLink="web"/>
@@ -93,7 +93,7 @@
 	  android:layout_width="fill_parent"
 	  android:layout_height="wrap_content"
 	  android:layout_below="@id/divider3"
-	  android:text="Smart KeePass is an Further development of KeePassDroid from Brian Pellin. KeePassDroid is available under www.keepassdroid.com"/>
+	  android:text="@string/disclaimer_formal"/>
 	<Button android:id="@+id/about_button"
   	  android:layout_height="wrap_content"
   	  android:layout_width="wrap_content"

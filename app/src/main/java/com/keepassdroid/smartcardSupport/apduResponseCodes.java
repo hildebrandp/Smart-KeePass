@@ -1,9 +1,26 @@
-package com.keepassdroid.mycode;
-
-/**
- * Created by Pascal Hildebrand on 17.05.2017.
- * Class for Converting the Response Code to Text
+/*
+ *
+ * Developed by Pascal Hildebrand.
+ *
+ * This file is part of Smart KeePass.
+ * Smart KeePass is an Further development of KeePassDroid from Brian Pellin.
+ * KeePassDroid is available under www.keepassdroid.com, Copyright Brian Pellin.
+ *
+ *  Smart KeePass is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  Smart KeePass is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with Smart KeePass.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
+package com.keepassdroid.smartcardSupport;
 
 public enum apduResponseCodes {
 
@@ -51,23 +68,13 @@ public enum apduResponseCodes {
     SW039("63C2", "Pin Wrong, 1 tries left"),
     SW040("63C1", "Pin Wrong, 0 tries left. PIN blocked!");
 
-    private String swString;
-    private String descString;
+    private String responseCode;
+    private String description;
 
-    apduResponseCodes(String swString, String descString)
+    apduResponseCodes(String responseCode, String description)
     {
-        this.swString = swString;
-        this.descString = descString;
-    }
-
-    private String getSwString()
-    {
-        return swString;
-    }
-
-    private String getDescString()
-    {
-        return descString;
+        this.responseCode = responseCode;
+        this.description = description;
     }
 
     /**
@@ -82,11 +89,21 @@ public enum apduResponseCodes {
         for(int i = 0; i < responseCodes.length; i++) {
             apduResponseCodes responseCode = responseCodes[i];
 
-            if( responseCode.getSwString().equalsIgnoreCase(code) ) {
-                return responseCode.getDescString();
+            if( responseCode.getresponseCode().equalsIgnoreCase(code) ) {
+                return responseCode.getdescription();
             }
         }
 
         return "";
+    }
+
+    private String getdescription()
+    {
+        return description;
+    }
+
+    private String getresponseCode()
+    {
+        return responseCode;
     }
 }

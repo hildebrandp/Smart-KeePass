@@ -1,4 +1,26 @@
-package com.keepassdroid.mycode;
+/*
+ *
+ * Developed by Pascal Hildebrand.
+ *
+ * This file is part of Smart KeePass.
+ * Smart KeePass is an Further development of KeePassDroid from Brian Pellin.
+ * KeePassDroid is available under www.keepassdroid.com, Copyright Brian Pellin.
+ *
+ *  Smart KeePass is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  Smart KeePass is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with Smart KeePass.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+package com.keepassdroid.smartcardSupport;
 
 
 import android.app.Service;
@@ -10,13 +32,10 @@ import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.keepassdroid.app.App;
-
 import java.util.Timer;
 import java.util.TimerTask;
 
 /**
- * Created by Pascal Hildebrand
  * Background Service Class which checks if Smartcard is still connected
  * If Card isn´t connected anymore it send Message to Open Class
  */
@@ -96,15 +115,24 @@ public class backgroundService extends Service
                 @Override
                 public void run()
                 {
-                    if ( !myNFCTag.isConnected() ) {
+                    if ( myNFCTag != null ) {
+                        if ( !myNFCTag.isConnected() ) {
+                            Log.v("App:", "Smartcard no connection!");
+                            Intent intent = new Intent(NOTIFICATION_CLOSE);
+                            intent.putExtra("RESULT", "TRUE");
+                            sendBroadcast(intent);
+
+                            Toast.makeText(getApplicationContext(), "Smartcard disconnect!", Toast.LENGTH_LONG).show();
+                            mTimer.cancel();
+                        }
+                    } else {
                         Log.v("App:", "Smartcard no connection!");
                         Intent intent = new Intent(NOTIFICATION_CLOSE);
                         intent.putExtra("RESULT", "TRUE");
                         sendBroadcast(intent);
 
-                        Toast.makeText(getApplicationContext(), "Smartcard disconnect!", Toast.LENGTH_LONG).show();
-                        mTimer.cancel();
                     }
+
 
                 }
 

@@ -1,4 +1,26 @@
-package com.keepassdroid.mycode;
+/*
+ *
+ * Developed by Pascal Hildebrand.
+ *
+ * This file is part of Smart KeePass.
+ * Smart KeePass is an Further development of KeePassDroid from Brian Pellin.
+ * KeePassDroid is available under www.keepassdroid.com, Copyright Brian Pellin.
+ *
+ *  Smart KeePass is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  Smart KeePass is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with Smart KeePass.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+package com.keepassdroid.smartcardSupport;
 
 import android.util.Log;
 
@@ -13,11 +35,6 @@ import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 import static android.content.ContentValues.TAG;
-
-/**
- * Created by Pascal Hildebrand
- * Class for Zipping and unzipping Files
- */
 
 public class zipKDBXFile {
 

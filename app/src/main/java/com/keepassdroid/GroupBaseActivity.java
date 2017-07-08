@@ -50,7 +50,7 @@ import com.keepassdroid.compat.ActivityCompat;
 import com.keepassdroid.compat.EditorCompat;
 import com.keepassdroid.database.PwGroup;
 import com.keepassdroid.database.edit.OnFinish;
-import com.keepassdroid.mycode.backgroundService;
+import com.keepassdroid.smartcardSupport.backgroundService;
 import com.keepassdroid.settings.AppSettingsActivity;
 import com.keepassdroid.utils.Util;
 import com.keepassdroid.view.ClickView;
